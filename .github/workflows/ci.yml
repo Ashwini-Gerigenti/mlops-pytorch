@@ -1,0 +1,43 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [docker_ci]
+
+jobs:
+  build_and_test_container:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Train Model
+      run: python train.py
+
+    - name: Build Docker Image
+      run: docker build  -f Dockerfile -t mlops-pytorch .
+
+    - name: Run Container and Test
+      run: docker run mlops-pytorch
+
+    - name: Login to DockerHub
+      env:
+        USER: ${{ secrets.USER }}
+        PASSWORD: ${{ secrets.PASSWORD }}
+      run: |
+        echo "$PASSWORD" | docker login -u "$USER" --password-stdin
+
+    - name: Push Docker Image
+      run: |
+        docker tag mlops-pytorch ${{ secrets.USER }}/mlops-pytorch:latest
+        docker push ${{ secrets.USER }}/mlops-pytorch:latest
